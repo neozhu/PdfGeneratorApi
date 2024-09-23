@@ -105,7 +105,14 @@ app.MapPost("/generate-pdf", async (
         // Return a bad request response if neither URL nor HTML content is provided
         return Results.BadRequest("A URL or HTML content must be provided");
     }
-
+    // **Insert the script to wait for all images to load**
+    await page.EvaluateAsync(@"() => Promise.all(
+        Array.from(document.images)
+            .filter(img => !img.complete)
+            .map(img => new Promise(resolve => {
+                img.onload = img.onerror = resolve;
+            }))
+    )");
     // Hide specified elements based on CSS selectors
     if (request.HideSelectors != null && request.HideSelectors.Any())
     {
@@ -155,7 +162,7 @@ app.Run();
 // Generate CSS for the watermark
 async Task<string> GenerateWatermarkCssAsync(PdfRequest request)
 {
-    var position = request.WatermarkPosition ?? Position.Center;
+    var position = request.WatermarkPosition;
     var opacity = 0.2; // Set a reasonable opacity
 
     var positionCss = GetPositionCss(position);
@@ -168,7 +175,8 @@ async Task<string> GenerateWatermarkCssAsync(PdfRequest request)
                 content: '{request.WatermarkText}';
                 position: fixed;
                 {positionCss}
-                font-size: 50px;
+                font-size: 5rem;
+                font-weight: 800;
                 color: rgba(0, 0, 0, {opacity});
                 pointer-events: none;
                 z-index: 9999;
@@ -202,7 +210,7 @@ async Task<string> GenerateWatermarkCssAsync(PdfRequest request)
 // Generate CSS for the stamp
 async Task<string> GenerateStampCssAsync(PdfRequest request)
 {
-    var position = request.StampPosition ?? Position.RightBottom;
+    var position = request.StampPosition;
     // Get the image URL (either from the uploaded file or the provided URL)
     var imageUrl = await GetImageUrlAsync(request.StampImageFile, request.StampImageUrl);
     var positionCss = GetPositionCss(position);
@@ -213,8 +221,8 @@ async Task<string> GenerateStampCssAsync(PdfRequest request)
             content: '';
             position: fixed;
             {positionCss}
-            width: 100px;
-            height: 100px;
+            width: 150px;
+            height: 150px;
             background: url('{imageUrl}') no-repeat center center;
             background-size: contain;
             opacity: 1;
@@ -237,8 +245,22 @@ async Task<string> GetImageUrlAsync(IFormFile imageFile, string imageUrl)
     }
     else if (!string.IsNullOrEmpty(imageUrl))
     {
-        // Use the provided image URL
-        return imageUrl;
+        // Validate the URL by performing a test request to ensure the image can be loaded
+        try
+        {
+            var httpClient = new HttpClient();
+            var response = await httpClient.GetAsync(imageUrl);
+            if (response.IsSuccessStatusCode)
+            {
+                // Return the provided image URL if it is valid and reachable
+                return imageUrl;
+            }
+        }
+        catch
+        {
+            // Log or handle error if the URL is unreachable
+            return string.Empty; // Return empty string if the image URL is invalid
+        }
     }
 
     return string.Empty; // Return empty string if no image is provided

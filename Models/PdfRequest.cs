@@ -15,13 +15,13 @@ public class PdfRequest
     [SwaggerSchema(Format = "binary")]
     public IFormFile? WatermarkImageFile { get; set; }
     [EnumDataType(typeof(Position))]
-    public Position? WatermarkPosition { get; set; }
+    public Position WatermarkPosition { get; set; }= Position.Center;
 
     public string? StampImageUrl { get; set; }
 
     [SwaggerSchema(Format = "binary")]
     public IFormFile? StampImageFile { get; set; }
     [EnumDataType(typeof(Position))]
-    public Position? StampPosition { get; set; }
+    public Position StampPosition { get; set; } = Position.RightBottom;
 }
 
