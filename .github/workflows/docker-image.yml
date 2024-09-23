@@ -40,12 +40,12 @@ jobs:
       with:
         context: .
         push: true
-        tags: blazordevlab/PdfGeneratorApi:${{ steps.version.outputs.version }}
+        tags: blazordevlab/pdfgeneratorapi:${{ steps.version.outputs.version }}
 
     - name: Build and push with latest tag
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        tags: blazordevlab/PdfGeneratorApi:latest
+        tags: blazordevlab/pdfgeneratorapi:latest
      
