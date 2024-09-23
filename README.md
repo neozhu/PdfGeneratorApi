@@ -1,0 +1,2 @@
+# PdfGeneratorApi
+ This project is a Minimal APIs application built with ASP.NET Core and Playwright. It provides an API to generate PDFs from HTML content or URLs, with additional features such as hiding elements, adding watermarks (text or image), and stamping images onto the generated PDF. The API includes Swagger documentation and supports API Key authentication. It is containerized for easy deployment using Docker.
