@@ -3,8 +3,8 @@ using Microsoft.OpenApi.Models;
 using Microsoft.Playwright;
 
 
-//Microsoft.Playwright.Program.Main(["install"]);
-//return;
+Microsoft.Playwright.Program.Main(["install"]);
+
 
 
 var builder = WebApplication.CreateBuilder(args);
