@@ -33,11 +33,9 @@ This project is a Minimal APIs application built with ASP.NET Core and Playwrigh
 - **Hide Elements**: Specify CSS selectors to hide elements in the PDF.
 - **Add Watermarks**:
   - Text or image watermarks.
-  - Image watermarks can be uploaded or referenced via URL.
-  - Positioning options using an enum for type safety.
+  - Image watermarks can be uploaded.
 - **Add Stamps**:
-  - Stamp images can be uploaded or referenced via URL.
-  - Positioning options using an enum.
+  - Stamp images can be uploaded.
 - **Swagger Integration**: Interactive API documentation and testing.
 - **API Key Authentication**: Simple API key authentication using environment variables.
 - **Containerization**: Dockerfile included for easy container deployment.
@@ -143,24 +141,10 @@ Alternatively, you can set the environment variable in the `launchSettings.json`
 
 - **Url** (`string`, optional): The web page URL to convert to PDF.
 - **HtmlContent** (`string`, optional): The HTML content to convert to PDF.
-- **HideSelectors** (`List<string>`, optional): CSS selectors of elements to hide.
+- **HideSelectors** (`string`, optional): CSS selectors of elements to hide.
 - **WatermarkText** (`string`, optional): Text to use as a watermark.
-- **WatermarkImageUrl** (`string`, optional): URL of the image to use as a watermark.
 - **WatermarkImageFile** (`IFormFile`, optional): Image file to use as a watermark.
-- **WatermarkPosition** (`Position` enum, optional): Position of the watermark. Options:
-  - `LeftTop`
-  - `LeftBottom`
-  - `RightTop`
-  - `RightBottom`
-  - `Center` (default)
-- **StampImageUrl** (`string`, optional): URL of the stamp image.
 - **StampImageFile** (`IFormFile`, optional): Stamp image file.
-- **StampPosition** (`Position` enum, optional): Position of the stamp image. Options:
-  - `LeftTop`
-  - `LeftBottom`
-  - `RightTop`
-  - `RightBottom`
-  - `Center` (default)
 
 ### Example Request
 
@@ -191,22 +175,10 @@ curl -X POST http://localhost:5000/generate-pdf \
      -H "X-API-KEY: your-api-key-here" \
      -F "Url=https://www.example.com" \
      -F "WatermarkText=Confidential" \
-     -F "WatermarkPosition=Center" \
      -o confidential.pdf
 ```
 
 ### Adding an Image Watermark
-
-Using an image URL:
-
-```bash
-curl -X POST http://localhost:5000/generate-pdf \
-     -H "X-API-KEY: your-api-key-here" \
-     -F "HtmlContent=<p>PDF with image watermark.</p>" \
-     -F "WatermarkImageUrl=https://www.example.com/watermark.png" \
-     -F "WatermarkPosition=Center" \
-     -o image_watermark.pdf
-```
 
 Uploading an image file:
 
@@ -215,7 +187,6 @@ curl -X POST http://localhost:5000/generate-pdf \
      -H "X-API-KEY: your-api-key-here" \
      -F "HtmlContent=<p>PDF with uploaded image watermark.</p>" \
      -F "WatermarkImageFile=@/path/to/watermark.png" \
-     -F "WatermarkPosition=Center" \
      -o uploaded_image_watermark.pdf
 ```
 
@@ -225,7 +196,7 @@ curl -X POST http://localhost:5000/generate-pdf \
 curl -X POST http://localhost:5000/generate-pdf \
      -H "X-API-KEY: your-api-key-here" \
      -F "HtmlContent=<p>PDF with stamp image.</p>" \
-     -F "StampImageUrl=https://www.example.com/stamp.png" \
+     -F "StampImageFile=@/path/to/watermark.png" \
      -F "StampPosition=RightBottom" \
      -o stamped.pdf
 ```
