@@ -41,8 +41,7 @@ COPY --from=publish /app/publish .
 COPY ["PdfGeneratorApi.csproj", "./"]
 
 RUN dotnet tool install --global Microsoft.Playwright.CLI
-ENV PATH="$PATH:/root/.dotnet/tools"
-RUN playwright install
+RUN /root/.dotnet/tools/playwright install
 
 # Set an environment variable (optional)
 # ENV API_KEY=your-api-key-here
