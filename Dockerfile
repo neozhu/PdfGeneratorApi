@@ -46,6 +46,6 @@ COPY ["PdfGeneratorApi.csproj", "./"]
 # RUN playwright install --with-deps chromium
 
 # Set an environment variable (optional)
-ENV API_KEY=your-api-key-here
+# ENV API_KEY=your-api-key-here
 
 ENTRYPOINT ["dotnet", "PdfGeneratorApi.dll"]

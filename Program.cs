@@ -67,9 +67,10 @@ app.Use(async (context, next) =>
         await context.Response.WriteAsync("API Key is missing");
         return;
     }
-
-    // Get the API Key from environment variables
-    var apiKey = Environment.GetEnvironmentVariable("API_KEY");
+    // Get the configuration service
+    var config = context.RequestServices.GetRequiredService<IConfiguration>();
+    // Get the API Key from appsettings.json
+    var apiKey = config.GetValue<string>("ApiKey");
     if (string.IsNullOrEmpty(apiKey) || !apiKey.Equals(extractedApiKey))
     {
         context.Response.StatusCode = 401; // Unauthorized
