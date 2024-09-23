@@ -18,7 +18,6 @@
 FROM mcr.microsoft.com/dotnet/nightly/sdk:9.0 AS base
 WORKDIR /app
 
-
 RUN apt-get update && apt-get install -y \
     libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
     libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 \
@@ -38,13 +37,14 @@ RUN dotnet publish "PdfGeneratorApi.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-
+# Copy the project file into the final image
+COPY ["PdfGeneratorApi.csproj", "./"]
 
 RUN dotnet tool install --global Microsoft.Playwright.CLI
 ENV PATH="$PATH:/root/.dotnet/tools"
 RUN playwright install --with-deps chromium
 
-# sets an environment variable (optional)
+# Set an environment variable (optional)
 # ENV API_KEY=your-api-key-here
 
 ENTRYPOINT ["dotnet", "PdfGeneratorApi.dll"]
