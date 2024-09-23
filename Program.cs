@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using Microsoft.Playwright;
-using PdfGeneratorApi.Models;
-// Alias for Position enum to avoid naming conflicts
-using Position = PdfGeneratorApi.Models.Position;
+
+
+//Microsoft.Playwright.Program.Main(["install"]);
+//return;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,8 +46,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 
-    // Support file uploads in Swagger
-    c.OperationFilter<FileUploadOperationFilter>();
 });
 
 var app = builder.Build();
@@ -83,40 +83,43 @@ app.Use(async (context, next) =>
 // Define the API endpoint for generating PDFs
 app.MapPost("/generate-pdf", async (
     [FromServices] Task<IBrowser> browserTask, // Inject the Playwright browser
-    [FromForm] PdfRequest request) => // Bind form data to PdfRequest model
+     string? Url,                    // URL of the page to generate PDF from
+     string? HtmlContent,            // HTML content to render
+     string? HideSelectors,    // CSS selectors to hide elements
+     string? WatermarkText,          // Text for watermark
+     IFormFile? WatermarkImageFile,  // Image file for watermark
+     IFormFile? StampImageFile       // Image file for stamp
+                                        ) => // Bind form data to PdfRequest model
 {
     var browser = await browserTask;
     var context = await browser.NewContextAsync();
     var page = await context.NewPageAsync();
 
     // Load the page content
-    if (!string.IsNullOrEmpty(request.Url))
+    if (!string.IsNullOrEmpty(Url))
     {
         // Navigate to the provided URL
-        await page.GotoAsync(request.Url);
+        await page.GotoAsync(Url);
     }
-    else if (!string.IsNullOrEmpty(request.HtmlContent))
+    else if (!string.IsNullOrEmpty(HtmlContent))
     {
         // Set the HTML content directly
-        await page.SetContentAsync(request.HtmlContent);
+        await page.SetContentAsync(HtmlContent);
     }
     else
     {
         // Return a bad request response if neither URL nor HTML content is provided
         return Results.BadRequest("A URL or HTML content must be provided");
     }
-    // **Insert the script to wait for all images to load**
-    await page.EvaluateAsync(@"() => Promise.all(
-        Array.from(document.images)
-            .filter(img => !img.complete)
-            .map(img => new Promise(resolve => {
-                img.onload = img.onerror = resolve;
-            }))
-    )");
+
     // Hide specified elements based on CSS selectors
-    if (request.HideSelectors != null && request.HideSelectors.Any())
+    var hideSelectorsList = HideSelectors?
+    .Split(new[] { ',', ';','|' }, StringSplitOptions.RemoveEmptyEntries)
+    .Select(s => s.Trim())
+    .ToList();
+    if (hideSelectorsList != null && hideSelectorsList.Any())
     {
-        foreach (var selector in request.HideSelectors)
+        foreach (var selector in hideSelectorsList)
         {
             // Execute JavaScript to hide elements matching the selector
             await page.EvaluateAsync($"() => {{ const elements = document.querySelectorAll('{selector}'); elements.forEach(el => el.style.display = 'none'); }}");
@@ -124,22 +127,24 @@ app.MapPost("/generate-pdf", async (
     }
 
     // Add watermark if specified
-    if (!string.IsNullOrEmpty(request.WatermarkText) || request.WatermarkImageFile != null || !string.IsNullOrEmpty(request.WatermarkImageUrl))
+    if (!string.IsNullOrEmpty(WatermarkText) || WatermarkImageFile != null)
     {
         // Generate CSS for the watermark
-        var watermarkCss = await GenerateWatermarkCssAsync(request);
+        var watermarkCss = await GenerateWatermarkCssAsync(WatermarkText, WatermarkImageFile);
         // Inject the CSS into the page
         await page.AddStyleTagAsync(new() { Content = watermarkCss });
     }
 
     // Add stamp if specified
-    if (request.StampImageFile != null || !string.IsNullOrEmpty(request.StampImageUrl))
+    if (StampImageFile != null)
     {
         // Generate CSS for the stamp
-        var stampCss = await GenerateStampCssAsync(request);
+        var stampCss = await GenerateStampCssAsync(StampImageFile);
         // Inject the CSS into the page
         await page.AddStyleTagAsync(new() { Content = stampCss });
     }
+
+    await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
     // Generate the PDF with specified options
     var pdfStream = await page.PdfAsync(new PagePdfOptions
@@ -160,21 +165,20 @@ app.Run();
 // Helper methods
 
 // Generate CSS for the watermark
-async Task<string> GenerateWatermarkCssAsync(PdfRequest request)
+async Task<string> GenerateWatermarkCssAsync(string watermark,IFormFile? image)
 {
-    var position = request.WatermarkPosition;
+
     var opacity = 0.2; // Set a reasonable opacity
-
-    var positionCss = GetPositionCss(position);
-
-    if (!string.IsNullOrEmpty(request.WatermarkText))
+    if (!string.IsNullOrEmpty(watermark))
     {
         // Create CSS for text watermark
         return $@"
             body::after {{
-                content: '{request.WatermarkText}';
+                content: '{watermark}';
                 position: fixed;
-                {positionCss}
+                top: 50%; 
+                left: 50%; 
+                transform: translate(-50%, -50%);
                 font-size: 5rem;
                 font-weight: 800;
                 color: rgba(0, 0, 0, {opacity});
@@ -183,19 +187,19 @@ async Task<string> GenerateWatermarkCssAsync(PdfRequest request)
                 transform: rotate(-45deg);
             }}";
     }
-    else if (request.WatermarkImageFile != null || !string.IsNullOrEmpty(request.WatermarkImageUrl))
+    else if (image != null)
     {
         // Get the image URL (either from the uploaded file or the provided URL)
-        var imageUrl = await GetImageUrlAsync(request.WatermarkImageFile, request.WatermarkImageUrl);
+        var imageUrl = await GetImageUrlAsync(image);
 
         // Create CSS for image watermark
         return $@"
             body::after {{
                 content: '';
                 position: fixed;
-                {positionCss}
                 width: 100%;
                 height: 100%;
+                top: 0; left: 0;
                 background: url('{imageUrl}') no-repeat center center;
                 background-size: contain;
                 opacity: {opacity};
@@ -208,21 +212,20 @@ async Task<string> GenerateWatermarkCssAsync(PdfRequest request)
 }
 
 // Generate CSS for the stamp
-async Task<string> GenerateStampCssAsync(PdfRequest request)
+async Task<string> GenerateStampCssAsync( IFormFile? image)
 {
-    var position = request.StampPosition;
-    // Get the image URL (either from the uploaded file or the provided URL)
-    var imageUrl = await GetImageUrlAsync(request.StampImageFile, request.StampImageUrl);
-    var positionCss = GetPositionCss(position);
 
+    // Get the image URL (either from the uploaded file or the provided URL)
+    var imageUrl = await GetImageUrlAsync(image);
     // Create CSS for the stamp image
     return $@"
         body::before {{
             content: '';
             position: fixed;
-            {positionCss}
-            width: 150px;
-            height: 150px;
+            bottom: 0; 
+            right: 0;
+            width: 180px;
+            height: 180px;
             background: url('{imageUrl}') no-repeat center center;
             background-size: contain;
             opacity: 1;
@@ -231,7 +234,7 @@ async Task<string> GenerateStampCssAsync(PdfRequest request)
 }
 
 // Convert uploaded image file to Base64 data URL or use the provided image URL
-async Task<string> GetImageUrlAsync(IFormFile imageFile, string imageUrl)
+async Task<string> GetImageUrlAsync(IFormFile imageFile)
 {
     if (imageFile != null)
     {
@@ -243,39 +246,6 @@ async Task<string> GetImageUrlAsync(IFormFile imageFile, string imageUrl)
         // Return the image as a Base64 data URL
         return $"data:{contentType};base64,{base64}";
     }
-    else if (!string.IsNullOrEmpty(imageUrl))
-    {
-        // Validate the URL by performing a test request to ensure the image can be loaded
-        try
-        {
-            var httpClient = new HttpClient();
-            var response = await httpClient.GetAsync(imageUrl);
-            if (response.IsSuccessStatusCode)
-            {
-                // Return the provided image URL if it is valid and reachable
-                return imageUrl;
-            }
-        }
-        catch
-        {
-            // Log or handle error if the URL is unreachable
-            return string.Empty; // Return empty string if the image URL is invalid
-        }
-    }
-
     return string.Empty; // Return empty string if no image is provided
 }
 
-// Get CSS positioning based on the Position enum
-string GetPositionCss(Position position)
-{
-    return position switch
-    {
-        Position.LeftTop => "top: 0; left: 0;",
-        Position.LeftBottom => "bottom: 0; left: 0;",
-        Position.RightTop => "top: 0; right: 0;",
-        Position.RightBottom => "bottom: 0; right: 0;",
-        Position.Center => "top: 50%; left: 50%; transform: translate(-50%, -50%);",
-        _ => "bottom: 0; right: 0;", // Default to right bottom if position is unspecified
-    };
-}
