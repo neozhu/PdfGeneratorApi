@@ -109,12 +109,53 @@ Alternatively, you can set the `ApiKey` in the `appsettings.Development.json` fi
 2. **Run the Docker Container**:
 
    ```bash
-   docker run -d -p 5000:80 -e API_KEY=your-api-key-here pdfgeneratorapi
+   docker run -d -p 5000:80 -e AapiKey=your-api-key-here pdfgeneratorapi
    ```
 
 3. **Access Swagger UI**:
 
    Open your browser and navigate to `http://localhost:5000/swagger`.
+
+### Using Docker Compose
+
+You can also run the application using Docker Compose with the following configuration:
+
+```yaml
+version: '3.8'
+
+services:
+  pdfgeneratorapi:
+    image: blazordevlab/pdfgeneratorapi:latest
+    container_name: pdfgeneratorapi_container
+    ports:
+      - "8980:8080"  
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ApiKey=your-api-key-here
+    restart: unless-stopped
+```
+
+**Steps to Run with Docker Compose**:
+
+1. **Create a `docker-compose.yml` File**:
+
+   Save the above configuration into a file named `docker-compose.yml` in your project directory.
+
+2. **Run Docker Compose**:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Access Swagger UI**:
+
+   Open your browser and navigate to `http://localhost:8980/swagger` to interact with the API documentation.
+
+**Note**:
+
+- Replace `your-api-key-here` with your actual API key.
+- Ensure that the port mapping in the `ports` section matches your desired host and container ports.
+- The `restart: unless-stopped` policy ensures that the container restarts automatically unless you stop it manually.
 
 ## API Documentation
 
