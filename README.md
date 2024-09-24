@@ -62,42 +62,27 @@ This project is a Minimal APIs application built with ASP.NET Core and Playwrigh
    dotnet restore
    ```
 
-### Environment Variables
+## Configuration
 
-Set the `API_KEY` environment variable to secure your API:
-
-- **On Windows**:
-
-  ```powershell
-  $Env:API_KEY = "your-api-key-here"
-  ```
-
-- **On Linux/macOS**:
-
-  ```bash
-  export API_KEY="your-api-key-here"
-  ```
-
-Alternatively, you can set the environment variable in the `launchSettings.json` file for development purposes:
+Set the `ApiKey` in your `appsettings.json` file to secure your API:
 
 ```json
 {
-  "profiles": {
-    "PdfGeneratorApi": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "launchBrowser": false,
-      "applicationUrl": "http://localhost:5000",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "API_KEY": "your-api-key-here"
-      }
-    }
-  }
+  "ApiKey": "your-api-key-here",
+  // ... other settings
 }
 ```
 
-**Note**: Do not commit sensitive information like API keys to version control.
+Alternatively, you can set the `ApiKey` in the `appsettings.Development.json` file for development purposes:
+
+```json
+{
+  "ApiKey": "your-api-key-here"
+}
+```
+
+**Note**: Do not commit sensitive information like API keys to version control repositories. For production environments, consider using environment variables or a secure secrets management solution to store sensitive data.
+
 
 ## Running the Application
 
